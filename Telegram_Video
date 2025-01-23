@@ -1,0 +1,117 @@
+#!/usr/bin/python
+#coder :- Salman Faris
+
+import sys
+import time
+import telepot
+import RPi.GPIO as GPIO
+import time, datetime
+import os
+import random
+import subprocess
+
+from telepot.loop import MessageLoop
+from re import findall
+from subprocess import Popen, PIPE
+from pythonping import ping
+from telegram import Update
+from telegram.ext import Updater, CommandHandler, CallbackContext
+
+now = datetime.datetime.now()
+
+#LED
+def on(pin):
+        GPIO.output(pin,GPIO.HIGH)
+        return
+def off(pin):
+        GPIO.output(pin,GPIO.LOW)
+        return
+
+
+# to use Raspberry Pi board pin numbers
+GPIO.setmode(GPIO.BOARD)
+# set up GPIO output channel
+GPIO.setup(11, GPIO.OUT)
+
+def handle(msg):
+    chat_id = msg['chat']['id']
+    command = msg['text']
+
+    commandLow = command.lower()
+
+    print('Got command: %s' % commandLow)
+
+#    output = subprocess.check_output([commandLow], text=True)
+#    # Send the output to the chat
+#    bot.sendMessage(chat_id, text=output)
+
+    if commandLow == 'on':
+       bot.sendMessage(chat_id, on(11))
+    elif commandLow =='off':
+       bot.sendMessage(chat_id, off(11))
+
+    if commandLow == 'time':
+       bot.sendMessage(chat_id, 'cacti30: '+str(now.hour)+str(":")+str(now.minute))
+
+    if commandLow == 'help':
+       bot.sendMessage(chat_id, 'time  \n on \n off \n ping \n getupdates \n ls \n df \n uptime \n video')
+
+    if commandLow == 'ping':
+#       bot.sendMessage(chat_id, str(ping('8.8.8.8')))
+#       bot.sendMessage(chat_id, str(ping('10.4.0.1')))
+       output = subprocess.check_output(["ping", "-c4", "--", "8.8.8.8"])
+       bot.sendMessage(chat_id, text=f"```\n{output}```", parse_mode='Markdown')
+       output = subprocess.check_output(["ping", "-c4", "--", "10.4.0.1"])
+       bot.sendMessage(chat_id, text=f"```\n{output}```", parse_mode='Markdown')
+       output = subprocess.check_output(["ping", "-c4", "--", "192.168.2.21"])
+       bot.sendMessage(chat_id, text=f"```\n{output}```", parse_mode='Markdown')
+
+    if commandLow == 'ls':
+       # Run the 'ls' command and capture the output
+       output = subprocess.check_output(['ls','-l'], text=True)
+       # Send the output to the chat
+       bot.sendMessage(chat_id, text=f"```\n{output}```", parse_mode='Markdown')
+       #bot.sendMessage(chat_id, 'ls')
+
+    if commandLow == 'df':
+       # Run the 'df' command and capture the output
+       output = subprocess.check_output(['df','-h'], text=True)
+       # Send the output to the chat
+       bot.sendMessage(chat_id, text=f"```\n{output}```", parse_mode='Markdown')
+
+    if commandLow == 'uptime':
+       # Run the 'uptime' command and capture the output
+#       output = subprocess.check_output(['uptime'], text=True)
+       # Send the output to the chat
+#       bot.sendMessage(chat_id, text=output)
+
+       output = subprocess.check_output([commandLow], text=True)
+       # Send the output to the chat
+       bot.sendMessage(chat_id, text=output)
+
+
+    if commandLow == 'video':
+       # Run the 'df' command and capture the output
+       output = subprocess.run('ffmpeg -y -i /dev/video0 -vf drawtext=fontfile=/usr/share/fonts/truetype/freefont/FreeMonoBold.ttf:text="%{localtime}":fontcolor=white@0.8:x=7:y=7:fontsize=30 -max_muxing_queue_size 9999 -c:v libx264 -crf
+23 -maxrate 692K -preset faster -flags +global_header -pix_fmt yuv420p -profile:v baseline -movflags +faststart -c:a aac -ac 2 -fs 1333440 "out.mp4"', shell=True)
+       # Send the output to the chat
+       bot.sendVideo(chat_id, video=open('out.mp4', 'rb'))
+
+bot = telepot.Bot('7777777:xxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+
+
+bot.message_loop(handle)
+print('I am listening...')
+
+while 1:
+    try:
+        time.sleep(10)
+
+    except KeyboardInterrupt:
+        print('\n Program interrupted')
+        GPIO.cleanup()
+        exit()
+
+    except:
+        print('Other error or exception occured!')
+        GPIO.cleanup()
